@@ -23,6 +23,9 @@ __pycache__/
 *.jpg
 .delete/
 .exports/
+_session_sql/
+_session_sql/**     # your session DB + work dir
+**/_work/
 # Distribution / packaging
 .Python
 build/
