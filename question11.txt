@@ -1,0 +1,8 @@
+From the file "iris.parquet", Answer the following questions:       
+# EDA-style
+1. On the iris dataset, show species counts and the per-species mean of each numeric column. 
+2. Return a compact markdown table and 3 short bullet insights.
+# Simple regression (no sklearn required; use numpy OLS if needed)
+3. Fit an OLS regression predicting petal.length from sepal.length, sepal.width, and petal.width. 
+4. Report coefficients, R^2, and RMSE. Also print a small 5-row table of actual vs predicted.
+

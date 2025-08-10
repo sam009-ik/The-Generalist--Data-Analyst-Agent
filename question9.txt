@@ -1,0 +1,14 @@
+You are given a workbreak down structure image. It is at the url: 
+https://www.qimacros.com/quality-tools/work-breakdown-structure-text-excel.png
+
+Kindly answer the following questions from it:
+1. What is the % of Wheels in WBS Level 2?
+2. What is the total % of Frame Set in WBS Level 3?
+
+Given an uploaded image wbs_timeline.jpg, answer in yes/no.
+is the wbs timeline given for the same project/work given in the url? (Try to infer from context and titles etc)
+
+Answer in a json array
+json ```[
+[<num>, <num>, <str>] 
+]

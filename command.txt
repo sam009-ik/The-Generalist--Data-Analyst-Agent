@@ -1,0 +1,13 @@
+# =============== API REQUEST ==============
+curl -X POST http://localhost:8000/api/ -F "questions.txt=@question1.txt"
+
+# Multipart files
+curl -X POST http://localhost:8000/api/ -F "questions.txt=@question4.txt" -F "proposal=@24ds2000110_BDM_PROPOSAL.pdf"
+
+# MULTIPLE FILES
+curl -X POST http://localhost:8000/api/ -F "questions.txt=@question5.txt" -F "proposal=@24ds2000110_BDM_PROPOSAL.pdf" -F "midterm=@midterm_report.pdf"
+
+# CREATING ZIP FILES
+Compress-Archive -LiteralPath 'wbs_timeline.jpg','sample1.html','midterm_report.pdf' -DestinationPath 'img_html_pdf_files.zip' -CompressionLevel Optimal -Force
+#Q8
+curl -X POST http://localhost:8000/api/ -F "questions.txt=@question8.txt" -F "excel=@Primary_Data_Gravita.xlsx" -F "midterm=@midterm_report.pdf"

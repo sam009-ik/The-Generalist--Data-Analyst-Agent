@@ -1,0 +1,22 @@
+You will receive two files:
+1) Primary_Data_Gravita.xlsx
+2) midterm_report.pdf
+
+TASKS
+
+A) From the Excel file (Primary_Data_Gravita.xlsx):
+   - Open the sheet named exactly: HELPER COST DATA
+   - Extract “Total FG Production (MT)” for:
+       • Manual
+       • BHS
+   - Return the overall totals for each (sum if needed). Use numbers only.
+
+B) From the PDF (midterm_report.pdf):
+   - Find the standard deviation for costing for FG Production (MT) for:
+       • Manual
+       • BHS
+   - Use numbers only. (Refer to Descriptive Statistics Section)
+
+OUTPUT FORMAT (strict):
+Return a single JSON array with exactly four numbers in this order:
+[ Manual_TotalFG_MT, BHS_TotalFG_MT, Manual_StdDev_Costing_FG_MT, BHS_StdDev_Costing_FG_MT ]

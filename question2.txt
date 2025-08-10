@@ -1,0 +1,10 @@
+Look at the site: https://www.statscore.com/sport/soccer/how-many-passes-are-made-in-a-football-match/
+
+Answer the following questions and respond with a JSON array of strings containing concise answers.
+1. Identify and list the different types of passes described in football matches. Summarize their definitions and the typical contexts in which they are used.
+
+2. Using available match data or sample statistics, calculate the average number of total passes per match for top football teams mentioned (e.g., Manchester City, Barcelona, Bayern Munich), and highlight any record-setting performances.
+
+3. Analyze how the style of football (e.g., total football, tiki-taka, kick and rush) has historically influenced the average number and types of passes made in a match.
+
+4. Given a dataset of passes made per team per match, determine the relationship between number of passes and match outcomes (e.g., possession percentage, win/loss).

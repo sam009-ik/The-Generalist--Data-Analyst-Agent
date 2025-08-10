@@ -1,0 +1,13 @@
+Look at the zipped file: img_html_pdf_files.zip, Get all files from within and answer the following questions.
+1. From the image file please detail the complete timeline with the Task. Return a json object like:
+``` json
+{
+    "Date": 1st July 2025,
+    "Task": Task
+} for all dates and tasks.
+
+2. From the pdf get the BHS avg weighted (rs/mt) cost for Repair and Maintenance.
+
+3. From the html count the number of times the word 'Lorem' appears in the text.
+
+Finally return a single json array answering all three questions.

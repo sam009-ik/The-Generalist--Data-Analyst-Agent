@@ -1,0 +1,12 @@
+Use the following file sources: 
+- https://www.reddit.com/r/ChatGPTCoding/comments/1ec36sl/are_there_ides_that_let_ai_create_files_and/
+- The 100 Tallest Completed Buildings in the World in 2025 - The Skyscraper Center.html
+
+Q1. List the top 3 AI's that help structure files and folders.
+Q2. Give the Height (in m) of the top 3 Buildings.
+
+Give the response as a json array 
+[
+    [ <str>, <str>, <str>]
+    [<num>, <num>, <num>]
+]

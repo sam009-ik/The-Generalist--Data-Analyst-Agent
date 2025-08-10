@@ -1,0 +1,6 @@
+Use 24ds2000110_BDM_PROPOSAL.pdf to answer the following questions and return a json array of strings. 
+
+What is the proposal about?
+What are the main problem statements outlined in this proposal?
+What are the proposed analyses or methodologies?
+Summarize any key recommendations or next steps from the proposal.

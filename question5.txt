@@ -1,0 +1,26 @@
+Filenames to be used:
+- 24ds2000110_BDM_PROPOSAL.pdf ("proposal")
+- midterm_report.pdf ("midterm")
+
+1. From the file "24ds2000110_BDM_PROPOSAL.pdf", extract and summarize the project problem statement in your own words.
+
+2. From the file "midterm_report.pdf", list only the metadata field names relevant to the ERP batch data described in the report. Output them as a flat array of strings.
+
+3. Using the batch or lot-level data described in "midterm_report.pdf", compute the **total battery scrap input (in MT)** separately for:
+   - Manual Cutting
+   - BHS
+
+4. Also from "midterm_report.pdf", calculate the **total weighted cost per MT** for Manual and BHS methods.
+   Then output only which method has the **lower cost per MT**, as a string: either `"Manual Cutting"` or `"BHS"`.
+
+---
+
+Respond strictly in the following format:
+```json
+[
+  [. . . "Problem Statement" . . .]
+  [<metadata_field_1>, <metadata_field_2>, ...],
+  <total_input_manual>,
+  <total_input_bhs>,
+  "<lower_cost_method>"
+]

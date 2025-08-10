@@ -1,0 +1,7 @@
+The following page ranks Indian states by population: https://datacommons.org/ranking/Count_Person/State/country/IND?h=wikidataId%2FQ677037
+
+Answer the following questions using the data from the page and respond with a JSON array containing the answers in order.
+
+1. Which Indian state has the highest population according to this dataset?
+2. What is the combined population of the top 5 most populous states?
+3. Plot a bar chart of the population of the top 10 states and encode it as a base64 data URI (under 100,000 characters).

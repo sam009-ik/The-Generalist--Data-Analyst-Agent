@@ -1,0 +1,63 @@
+# Core FastAPI server
+fastapi
+uvicorn
+
+#Env
+dotenv
+setuptools
+# LLM + JSON handling
+openai
+httpx
+html5lib
+
+# Data wrangling + I/O
+pandas
+pandasai
+PyYAML
+
+numpy
+duckdb
+pyarrow
+xlsxwriter
+openpyxl
+
+# Plotting and encoding
+matplotlib
+seaborn
+scikit-learn
+
+# HTML, web, scraping
+playwright
+beautifulsoup4
+lxml
+trafilatura
+
+# File extraction/preview
+pdfplumber
+pypdf2
+python-docx
+python-multipart
+pymupdf
+spylls
+spacy
+
+# tar.gz, zip handling
+tqdm  # for progress bars if needed
+
+# Agent safety & prompt tools (optional future-proofing)
+tiktoken
+tenacity
+
+# Parsing + utils
+pydantic
+
+# For base64 and temp handling
+aiofiles
+
+#Vision
+pillow
+
+#SQL
+duckdb
+sqlalchemy
+tabulate

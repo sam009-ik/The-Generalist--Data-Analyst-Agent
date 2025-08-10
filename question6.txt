@@ -1,0 +1,12 @@
+https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv
+From the iris.csv answer the following questions:
+1. Sum and give total for `sepal_length` where its not NaN
+2. Group by `species` and get the average `sepal_length` for each species
+3. Give correlation between `sepal_length` and `petal_length`
+
+Also, from the PDF https://www.irs.gov/pub/irs-pdf/fw4.pdf:
+1. From the 2024 IRS Form W-4 PDF, what is the number printed in the top-right corner of the form (the form’s OMB control number)?
+
+Answer in a **JSON array** format with only the numeric results in order:
+```json
+[<num>, <num>, <num>, <num>]
