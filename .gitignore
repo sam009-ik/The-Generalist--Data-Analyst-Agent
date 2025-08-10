@@ -5,7 +5,24 @@ __pycache__/
 
 # C extensions
 *.so
+# My additions
 
+# Databases & tabular files (keep samples out of git)
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.parquet
+*.csv
+*.tsv
+*.xlsx
+*.json
+*.sql
+*.pdf
+*.png
+*.jpg
+.delete/
+.exports/
 # Distribution / packaging
 .Python
 build/
