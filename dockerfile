@@ -1,19 +1,17 @@
-FROM mcr.microsoft.com/playwright/python:v1.54.0-jammy
+# Dockerfile
+FROM mcr.microsoft.com/playwright/python:v1.54.0-noble
 
 WORKDIR /app
 ENV DEBIAN_FRONTEND=noninteractive
 
-# install your python libs
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install browsers
+# browsers already in the image, but this is fine
 RUN python -m playwright install chromium
 
-# copy app code
 COPY . .
 
-# where your temp/session DBs live
 ENV SESSION_ROOT=/app/_session_sql
 RUN mkdir -p /app/_session_sql
 
