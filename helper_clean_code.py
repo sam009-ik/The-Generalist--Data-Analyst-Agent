@@ -23,3 +23,11 @@ def clean_url(u: str) -> str:
     u = u.strip('.,;:!?)]}>')
 
     return u
+
+import json
+
+def ensure_str(data):
+    if isinstance(data, (dict, list)):
+        # Pretty JSON so it stays easily readable for the LLM
+        return json.dumps(data, ensure_ascii=False, indent=2)
+    return str(data)  # for markdown, plain text, etc.

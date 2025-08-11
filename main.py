@@ -1,5 +1,8 @@
+import code
+import json
 from pprint import pprint
 import re
+import traceback
 import uuid
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,11 +13,11 @@ import pandas as pd
 from io import StringIO
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from typing import List
-import pprint
+import traceback, sys, pprint, json
 # ========== OWN FUNCTIONS ==========
 #from html_structuring_agent import generate_structured_preview
 from helper_html import render_html_file, render_html_url
-from helper_clean_code import clean_code, clean_url
+from helper_clean_code import clean_code, clean_url, ensure_str
 from helper_execute_code import execute_code
 # Anthropic SDK
 from anthropic import AsyncAnthropic
@@ -82,7 +85,7 @@ print(json.dumps([...])))
     if html_context or (archive_context and archive_context[0]["content"].get("html")):
         html_text = ""
         if html_context:
-            html_text += f"\nFrom Direct HTML Source: {html_context['source']}\n{html_context['content']}\n"
+            html_text += f"\nFrom Direct HTML Source: {html_context[0]['source']}\n{html_context[0]['content']}\n"
         if archive_context and archive_context[0]["content"].get("html"):
             html_text += f"\nFrom Archive HTML:\n{archive_context[0]['content']['html']}\n"
         system_prompt += fr"""<HTML Instructions>
@@ -97,10 +100,11 @@ print(json.dumps([...])))
     if pdf_context or (archive_context and archive_context[0]["content"].get("pdf")):
         pdf_text = ""
         if pdf_context:
-            pdf_text += f"\nFrom Direct PDF Source: {pdf_context['source']}\n{pdf_context['content']}\n"
+            pdf_text += f"\nFrom Direct PDF Source: {pdf_context[0]['source']}\n{pdf_context[0]['content']}\n"
+            print("PDF TEXT INSIDE SYSTEM PROMPT",pdf_text)
         if archive_context and archive_context[0]["content"].get("pdf"):
             pdf_text += f"\nFrom Archive PDF:\n{archive_context[0]['content']['pdf']}\n"
-            system_prompt += f""" <PDF Instructions>
+        system_prompt += fr""" <PDF Instructions>
     Here is the relevant content for the task from the `PDF Specialist Agent` which has already been extracted and structured for you.
     You do **not** need to re-fetch or parse the pdf yourself.
     Focus on using the provided structured pdf data and then answer the questions in the format requested.
@@ -112,7 +116,7 @@ print(json.dumps([...])))
     if csv_tsv_xlsx_context or (archive_context and archive_context[0]["content"].get("csv")):
         csv_text = ""
         if csv_tsv_xlsx_context:
-            csv_text += f"\nFrom Direct CSV/Excel Source: {csv_tsv_xlsx_context['source']}\n{csv_tsv_xlsx_context['content']}\n"
+            csv_text += f"\nFrom Direct CSV/Excel Source: {csv_tsv_xlsx_context[0]['source']}\n{csv_tsv_xlsx_context[0]['content']}\n"
         if archive_context and archive_context[0]["content"].get("csv"):
             csv_text += f"\nFrom Archive CSV/Excel:\n{archive_context[0]['content']['csv']}\n"
         system_prompt += f"""<CSV-TSV-EXCEL Instructions>
@@ -127,7 +131,7 @@ print(json.dumps([...])))
     if image_context or (archive_context and archive_context[0]["content"].get("image")):
         img_text = ""
         if image_context:
-            img_text += f"\nFrom Direct Image Source: {image_context['source']}\n{image_context['content']}\n"
+            img_text += f"\nFrom Direct Image Source: {image_context[0]['source']}\n{image_context[0]['content']}\n"
         if archive_context and archive_context[0]["content"].get("image"):
             img_text += f"\nFrom Archive Image:\n{archive_context[0]['content']['image']}\n"
         system_prompt += f"""<Image Instructions>
@@ -147,7 +151,8 @@ print(json.dumps([...])))
         {f"\nRelevant Data: {sql_parquet_json_context[0]['source']}\n{sql_parquet_json_context[0]['content']}\n"}
     </Structured SQL-Parquet-JSON>
     """
-
+    print("System Prompt for Data Analyst Agent:")
+    print(system_prompt)
     response = await anthropic_client.messages.create(
         model="claude-3-5-sonnet-20241022",
         max_tokens=1500,
@@ -242,22 +247,29 @@ async def analyze(request: Request):
 
             if html_files:
                 rendered_html_file = await render_html_file(html_files)
-                print("Rendered HTML from files:", rendered_html_file)
+                #print("Rendered HTML from files:", rendered_html_file)
             if html_urls:
                 rendered_html_urls = await asyncio.to_thread(render_html_url, html_urls)
-                print("Rendered HTML from URLs:", rendered_html_urls)
+                #print("Rendered HTML from URLs:", rendered_html_urls)
 
             full_html = (rendered_html_file or "") + (rendered_html_urls or "")
             if full_html.strip():
                 structured_html = await html_agent(full_html, question_text)
-                print("Content from HTML Agent:", structured_html)
-                html_context.append({
-                    "source": {
-                        "HTML Files": [f.filename for f in html_files],
-                        "HTML URLs": html_urls
-                    },
-                    "content": structured_html
-                })
+                print("Structured HTML raw type:", type(structured_html))
+                print("Structured HTML preview:", str(structured_html)[:300])
+                try:
+                    ctx_entry = {
+                        "source": {
+                            "HTML Files": [f.filename for f in html_files],
+                            "HTML URLs": html_urls
+                        },
+                        "content": ensure_str(structured_html)
+                    }
+                    #print("Appending ctx_entry...")
+                    html_context.append(ctx_entry)
+                    #print("After append, html_context:", html_context)
+                except Exception as e:
+                    print("🔥 Exception building html_context:", e)
         else:
             html_context = None
         # === Handle PDF ===
@@ -271,8 +283,9 @@ async def analyze(request: Request):
                     "PDF Files": [f.filename for f in pdf_files],
                     "PDF URLs": pdf_urls
                 },
-                "content": useful_pdf_content
+                "content": ensure_str(useful_pdf_content)
             })
+            #print("PDF Context:", pdf_context)
         else:
             pdf_context = None
 
@@ -291,7 +304,7 @@ async def analyze(request: Request):
                     "csv_files": [f.filename for f in csv_tsv_xlsx_files],
                     "csv_urls": csv_tsv_xlsx_urls
                 },
-                "content": useful_csv_content or ""
+                "content": ensure_str(useful_csv_content) or ""
             })
         else:
             csv_tsv_xlsx_context = None
@@ -305,7 +318,7 @@ async def analyze(request: Request):
                     "image_files": [f.filename for f in image_files],
                     "image_urls": image_urls
                 },
-                "content": image_text
+                "content": ensure_str(image_text)
             }]
         else:
             image_context = []
@@ -323,7 +336,7 @@ async def analyze(request: Request):
                     "archive_files": [f.filename for f in archive_files],
                     "archive_urls": archive_urls
                 },
-                "content": archive_result
+                "content": ensure_str(archive_result)
             }]
         else:
             archive_context = None
@@ -379,11 +392,15 @@ async def analyze(request: Request):
                 },
                 "context": ctx_json,           # so master can see session_db_path/tables if needed
                 "generated_code": generated_code,
-                "content": exec_output or ""   # what we’ll hand to the master agent
+                "content": ensure_str(exec_output) or ""   # what we’ll hand to the master agent
             }]
         else:
             sql_parquet_json_context = None
-
+        print("DEBUG just before master agent:")
+        print("html_context type:", type(html_context))
+        pprint.pprint(html_context)
+        print("pdf_context type:", type(pdf_context))
+        print("pdf_context value:", pdf_context)
         # Call Data Analyst Agent
         orchestrator = await data_analyst_agent(
             task=question_text,
@@ -405,9 +422,12 @@ async def analyze(request: Request):
         return data_analyst_ans
 
     except Exception as e:
+        tb = traceback.format_exc()
+        print("\n===== FATAL ENDPOINT EXCEPTION =====\n", tb)
+        sys.stdout.flush()
         return {
             "error": "Execution failed",
-            "details": str(e),
+            "details": tb,  # return full traceback so you see the file+line
             "stdout": stdout,
             "stderr": stderr
         }
