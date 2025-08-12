@@ -1,4 +1,5 @@
 # ---------- ARCHIVE AGENT (ZIP / TAR / TAR.GZ) ----------
+import json
 import os, io, tarfile, zipfile, tempfile, mimetypes
 from typing import List, Optional
 from starlette.datastructures import UploadFile as StarletteUploadFile
@@ -10,11 +11,16 @@ from csv_tsv_xlsx_agent import csv_tsv_xlsx_agent #Using Powerdrill
 from image_agent import image_agent
 from io import BytesIO
 from helper_html import render_html_file, render_html_url
+from process_sql_parquet_json import process_sql_parquet_json
+from sql_parquet_json_agent import sql_parquet_json_agent
+from process_sql_parquet_json import process_sql_parquet_json, execute_llm_python
 ARCHIVE_EXTS = (".zip", ".tar", ".tgz", ".tar.gz")
 TABULAR_EXTS = (".csv", ".tsv", ".xlsx")
 PDF_EXTS     = (".pdf",)
 IMAGE_EXTS   = (".png", ".jpg", ".jpeg", ".webp")
 HTML_EXTS    = (".html", ".htm")
+SQL_PARQUET_JSON_EXTS = (".db", ".sqlite", ".sqlite3", ".duckdb", ".parquet", ".json", ".sql")
+SESSION_ROOT = os.getenv("SESSION_ROOT", "/data/_session_sql")
 
 MAX_UNPACK_BYTES = 200 * 1024 * 1024   # 200 MB cap (uncompressed)
 MAX_FILES        = 200                 # entries per archive
@@ -81,13 +87,14 @@ async def archive_agent(
 
     if not archive_blobs:
         print("[archive_agent] no archive payloads")
-        return {"csv": "", "pdf": "", "image": "", "html": ""}
+        return {"csv": "", "pdf": "", "image": "", "html": "", "sql_parquet_json": ""}
 
     # 2) Extract safely, collect inner files by type
     all_csv:   List[StarletteUploadFile] = []
     all_pdf:   List[StarletteUploadFile] = []
     all_image: List[StarletteUploadFile] = []
     all_html:  List[StarletteUploadFile] = []
+    all_sql_parquet_json: List[StarletteUploadFile] = []
 
     total_unpacked = 0
     total_entries  = 0
@@ -130,6 +137,8 @@ async def archive_agent(
                                 all_image.append(_upload_from_bytes(base, data))
                             elif ext in HTML_EXTS and len(all_html) < MAX_PER_TYPE:
                                 all_html.append(_upload_from_bytes(base, data))
+                            elif ext in SQL_PARQUET_JSON_EXTS and len(all_sql_parquet_json) < MAX_PER_TYPE:
+                                all_sql_parquet_json.append(_upload_from_bytes(base, data))
 
                 elif arc_lower.endswith((".tar", ".tgz", ".tar.gz")):
                     mode = "r:gz" if arc_lower.endswith((".tgz", ".tar.gz")) else "r:"
@@ -157,6 +166,8 @@ async def archive_agent(
                                 all_image.append(_upload_from_bytes(base, data))
                             elif ext in HTML_EXTS and len(all_html) < MAX_PER_TYPE:
                                 all_html.append(_upload_from_bytes(base, data))
+                            elif ext in SQL_PARQUET_JSON_EXTS and len(all_sql_parquet_json) < MAX_PER_TYPE:
+                                all_sql_parquet_json.append(_upload_from_bytes(base, data))
 
                 else:
                     print(f"[archive_agent] unsupported archive extension: {name}")
@@ -164,13 +175,14 @@ async def archive_agent(
                 print(f"[archive_agent] extraction error for {name}: {e}")
 
         print(f"[archive_agent] extracted entries={total_entries}, bytes={total_unpacked}")
-        print(f"[archive_agent] collected csv={len(all_csv)} pdf={len(all_pdf)} image={len(all_image)} html={len(all_html)}")
+        print(f"[archive_agent] collected csv={len(all_csv)} pdf={len(all_pdf)} image={len(all_image)} html={len(all_html)} sql_parquet_json={len(all_sql_parquet_json)}")
 
         # 3) Dispatch to existing agents, producing STRINGS ONLY
         csv_text  = ""
         pdf_text  = ""
         image_text = ""
         html_text = ""
+        sql_parquet_json_text = ""
 
         # CSV/TSV/XLSX (Powerdrill path)
         if all_csv:
@@ -219,74 +231,42 @@ async def archive_agent(
                     print(f"[archive_agent] HTML agent len={len(html_text)}")
             except Exception as e:
                 print(f"[archive_agent] HTML agent error: {e}")
+        if all_sql_parquet_json:
+            persist_dir = os.path.join(SESSION_ROOT, req_id) 
+            db_files = [f for f in all_sql_parquet_json if f.filename.lower().endswith(".db", ".sqlite", ".sqlite3", ".duckdb")]
+            sql_files = [f for f in all_sql_parquet_json if f.filename.lower().endswith((".sql"))]
+            pj_files = [f for f in all_sql_parquet_json if f.filename.lower().endswith((".parquet", ".json"))]
+            try:
+                ctx = await process_sql_parquet_json(
+                task="",                 # we pass it, but your agent will do the thinking later
+                db_files=db_files,
+                sql_files=sql_files,
+                parquet_json_files=pj_files,
+                db_urls=[],
+                sql_urls=[],
+                parquet_json_urls=[],
+                persist_dir=persist_dir,
+                return_format="json"                   # keep your default _session_sql
+                )
+                ctx_json = ctx if isinstance(ctx, dict) else json.loads(ctx)
+                sql_query = await sql_parquet_json_agent(
+                    task_description=task,
+                    engine=ctx_json.get("engine"),
+                    session_db_path=ctx_json.get("session_db_path"),
+                    sample_preview=ctx_json.get("tables")
+                )
+                exec_output = execute_llm_python(sql_query, session_db_path=ctx_json.get("session_db_path"))
+                sql_parquet_json_text = _coerce_to_text(exec_output)
+                print(f"[archive_agent] SQL/Parquet/JSON agent len={len(sql_parquet_json_text)}")
+            except Exception as e:
+                print(f"[archive_agent] SQL/Parquet/JSON agent error: {e}")
 
     # 4) Return strings ready for your contexts
     return {
         "csv":   csv_text  or "",
         "pdf":   pdf_text  or "",
         "image": image_text or "",
-        "html":  html_text or ""
+        "html":  html_text or "",
+        "sql_parquet_json": sql_parquet_json_text or ""
     }
 
-
-async def main():
-    zip_path = "img_html_pdf_files.zip"
-    if not os.path.exists(zip_path):
-        print(f"[test-archive] Missing archive: {zip_path}")
-        return
-
-    # Build UploadFile from local zip
-    with open(zip_path, "rb") as f:
-        zip_bytes = f.read()
-    archive_files = [StarletteUploadFile(filename=os.path.basename(zip_path), file=BytesIO(zip_bytes))]
-    archive_urls = []  # you can put a .zip URL here later if you want
-
-    task = (
-        'Look at the zipped file: img_html_pdf_files.zip, Get all files from within and answer the following questions.\n'
-        '1. From the image file please detail the complete timeline with the Task. Return a json object like:\n'
-        '```\n'
-        ' {\n'
-        '     "Date": "1st July 2025",\n'
-        '     "Task": "Task"\n'
-        ' }\n'
-        '```\n'
-        'for all dates and tasks.\n\n'
-        '2. From the pdf get the BHS avg weighted (rs/mt) cost for Repair and Maintenance.\n\n'
-        "3. From the html count the number of times the word 'Lorem' appears in the text.\n\n"
-        'Finally return a single json array answering all three questions.'
-    )
-
-    print("[test-archive] Calling archive_agent ...")
-    result = await archive_agent(
-        task=task,
-        archive_files=archive_files,
-        archive_urls=archive_urls
-    )
-    # result is a dict of strings: {"csv": str, "pdf": str, "image": str, "html": str}
-    print("\n=== archive_agent RESULT (per modality) ===")
-    for k in ("image", "pdf", "html", "csv"):
-        v = result.get(k, "")
-        preview = (v[:500] + "...") if isinstance(v, str) and len(v) > 500 else v
-        print(f"[{k.upper()}]\n{preview}\n")
-
-    # If you want to pass straight into your master agent the same way you do elsewhere:
-    # (each context is a single dict with combined string content)
-    image_context = [{"source": {"archive_sources": [zip_path]}, "content": result.get("image", "")}] if result.get("image") else []
-    pdf_context   = [{"source": {"archive_sources": [zip_path]}, "content": result.get("pdf",   "")}] if result.get("pdf")   else []
-    html_context  = [{"source": {"archive_sources": [zip_path]}, "content": result.get("html",  "")}] if result.get("html")  else []
-    csv_context   = [{"source": {"archive_sources": [zip_path]}, "content": result.get("csv",   "")}] if result.get("csv")   else []
-
-    # Example: call your existing data_analyst_agent (uncomment if you want to actually run it)
-    # llm_code = await data_analyst_agent(
-    #     task=task,
-    #     previews=None,
-    #     html_context=html_context,
-    #     pdf_context=pdf_context,
-    #     csv_context=csv_context,
-    #     image_context=image_context
-    # )
-    # print("\n=== data_analyst_agent (code or answer) ===")
-    # print((llm_code[:1000] + "...") if isinstance(llm_code, str) and len(llm_code) > 1000 else llm_code)
-
-if __name__ == "__main__":
-    asyncio.run(main())

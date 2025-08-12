@@ -79,7 +79,7 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Use `io.BytesIO()` to capture the figure in memory.
         - Save with `plt.savefig(buf, format='png')`, followed by `buf.seek(0)`.
         - Encode using `base64.b64encode(buf.read()).decode('utf-8')`.
-        - Format as a data URI like "data:image/png;base64,<...>".
+        - Format the plot/image based on the task (for example base64 or uri).
 </Plotting Instructions>
 
 The final output must be a single line:
@@ -348,7 +348,7 @@ async def analyze(request: Request):
                     "archive_files": [f.filename for f in archive_files],
                     "archive_urls": archive_urls
                 },
-                "content": ensure_str(archive_result)
+                "content": archive_result
             }]
         else:
             archive_context = None
@@ -408,6 +408,8 @@ async def analyze(request: Request):
             }]
         else:
             sql_parquet_json_context = None
+            
+        # === Call the Master Data Analyst Agent ===
         print("DEBUG just before master agent:")
         print("html_context type:", type(html_context))
         pprint.pprint(html_context)
