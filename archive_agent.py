@@ -12,8 +12,8 @@ from image_agent import image_agent
 from io import BytesIO
 from helper_html import render_html_file, render_html_url
 from process_sql_parquet_json import process_sql_parquet_json
-from sql_parquet_json_agent import sql_parquet_json_agent
-from process_sql_parquet_json import process_sql_parquet_json, execute_llm_python
+from sql_parquet_json_agent import sql_parquet_json_agent, execute_llm_python
+from process_sql_parquet_json import process_sql_parquet_json
 ARCHIVE_EXTS = (".zip", ".tar", ".tgz", ".tar.gz")
 TABULAR_EXTS = (".csv", ".tsv", ".xlsx")
 PDF_EXTS     = (".pdf",)
