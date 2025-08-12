@@ -63,6 +63,7 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
      - SQL/Parquet/JSON Agent
     Always use the context sent by them to finally answer the task in the format requested.
 <General Instructions>
+        - **Always** add all necessary import statements at the top of your code.
         - **Only if** the specialised agents cannot answer or do not give you anything useful, then read the complete data yourself and answer the questions.
         - Before using `json.dumps(...)`, ensure all numeric values (like sums, means, etc.) are explicitly cast to native Python types using `int(...)` or `float(...)`. This avoids TypeError from numpy/pandas types.
         - When cleaning monetary values, use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
