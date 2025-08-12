@@ -53,21 +53,26 @@ class AnalysisRequest(BaseModel):
 # === Helper: Call Anthropic to generate Python ===
 async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv_tsv_xlsx_context=None, image_context=None, archive_context=None, sql_parquet_json_context=None) -> str:
     #data_source = preview.get("source", "")
-    system_prompt = fr"""You are a skilled data analyst writing complete, safe, and clean Python code to solve the user's data analysis task.
+    system_prompt = fr"""You are a skilled **Master Data Analyst** who writes complete, safe, and clean Python code to solve the user's data analysis task.
+    You have the following specialised agents at your disposal that send you the answer and the relevant content directly (sometimes messy)
+     - HTML Agent
+     - PDF Agent
+     - CSV/TSV/XLSX Agent
+     - Image Agent
+     - Archive Agent
+     - SQL/Parquet/JSON Agent
+    Always use the context sent by them to finally answer the task in the format requested.
 <General Instructions>
-    Based on the user's main task generate **only valid Python code** that:
-        - Reads the complete data correctly based on the task (from HTML tables, CSV URLs, PDFs or S3 parquet files via DuckDB).
-        - Handles messy data robustly using pandas and standard libraries.
+        - **Only if** the specialised agents cannot answer or do not give you anything useful, then read the complete data yourself and answer the questions.
         - Before using `json.dumps(...)`, ensure all numeric values (like sums, means, etc.) are explicitly cast to native Python types using `int(...)` or `float(...)`. This avoids TypeError from numpy/pandas types.
-        - When cleaning monetary values (like gross revenues), use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
-        - Always use pd.to_numeric(..., errors='coerce') for numeric conversion. Never use .astype(float) on user data — this will cause crashes on malformed entries like "T$...".
+        - When cleaning monetary values, use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
+        - Always use pd.to_numeric(..., errors='coerce') for numeric conversion. Never use .astype(float) on user data — this will cause crashes on malformed entries.
         - In case the question text involves a date, ensure you take that into consideration and answer accordingly.
-        - Drops missing values using `df.dropna(subset=[...])` before running any model fitting or mathematical operations.
-        - Always validates that both X and y (for regression) are numeric and contain no NaNs before calling `.fit()`.
-        - Uses raw strings for regex (e.g., `r'\\$|,'`) to avoid escape errors.
-        - When using `pd.read_html()` with a BeautifulSoup tag or HTML string, wrap it as `StringIO(str(tag))` and import `from io import StringIO`.
-        - Imports **all required packages** at the top of the script, including `json`, `io`, `base64`, `matplotlib.pyplot as plt`, etc.
-        - Does **not** write to files or show plots — encode any plots using base64 if requested.
+        - Drop missing values using `df.dropna(subset=[...])` before running any model fitting or mathematical operations.
+        - Always validate that both X and y (for modelling) are numeric and contain no NaNs before calling `.fit()`.
+        - Use raw strings for regex (e.g., `r'\\$|,'`) to avoid escape errors.
+        - Import **all required packages** at the top of the script, including `json`, `io`, `base64`, `matplotlib.pyplot as plt`, etc.
+        - Do not try to read files that you do not have direct access to.
 </General Instructions>
 <Plotting Instructions>
     If the task involves plotting (e.g., scatterplot, regression line, barplot):
@@ -75,7 +80,6 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Save with `plt.savefig(buf, format='png')`, followed by `buf.seek(0)`.
         - Encode using `base64.b64encode(buf.read()).decode('utf-8')`.
         - Format as a data URI like "data:image/png;base64,<...>".
-        - Insert the base64 string in the correct position in the final result — i.e., exactly where the corresponding question is.
 </Plotting Instructions>
 
 The final output must be a single line:
@@ -165,6 +169,14 @@ print(json.dumps([...])))
 
     return response.content[0].text.strip()
 
+# JUST SO THAT IT DOESNT BREAK
+@app.get("/")
+def root():
+    return {"ok": True, "service": "The Generalist Data Analyst Agent"}
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
 
 # === Main Endpoint ===
 @app.post("/api/")
