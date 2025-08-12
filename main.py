@@ -145,14 +145,20 @@ print(json.dumps([...])))
     <Image Data>
         {img_text}
     </Image Data> """
-    if sql_parquet_json_context:
+        
+    if sql_parquet_json_context or (archive_context and archive_context[0]["content"].get("sql_parquet_json")):
+        sql_parquet_json_text = ""
+        if sql_parquet_json_context:
+            sql_parquet_json_text += f"\nFrom Direct SQL/Parquet/JSON Source: {sql_parquet_json_context[0]['source']}\n{sql_parquet_json_context[0]['content']}\n"
+        if archive_context and archive_context[0]["content"].get("sql_parquet_json"):
+            sql_parquet_json_text += f"\nFrom Archive SQL/Parquet/JSON:\n{archive_context[0]['content']['sql_parquet_json']}\n"
         system_prompt += f"""<SQL-Parquet-JSON Instructions>
     Here is the relevant content for the task from the `SQL/Parquet/JSON Specialist Agent` which has already been extracted and structured for you.
     You do **not** need to re-fetch or parse the SQL/Parquet/JSON yourself.
     Focus on using the provided structure and then answer the questions in the format requested.
     </SQL-Parquet-JSON Instructions>
     <Structured SQL-Parquet-JSON>
-        {f"\nRelevant Data: {sql_parquet_json_context[0]['source']}\n{sql_parquet_json_context[0]['content']}\n"}
+        {sql_parquet_json_text}
     </Structured SQL-Parquet-JSON>
     """
     print("System Prompt for Data Analyst Agent:")
@@ -408,7 +414,7 @@ async def analyze(request: Request):
             }]
         else:
             sql_parquet_json_context = None
-            
+
         # === Call the Master Data Analyst Agent ===
         print("DEBUG just before master agent:")
         print("html_context type:", type(html_context))
