@@ -83,9 +83,11 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Format the plot/image based on the task (for example base64 or uri).
 </Plotting Instructions>
 <Final Output>
-Return the final answer as valid JSON (array or object) **exactly** in the structure requested in the task description. Print nothing else.
-The final output must be a single line:
-json.dumps(result, separators=(',',':')).
+Return the result as valid JSON (array or object) **exactly** in the structure requested in the task description.
+Return ONLY Python code in a ```python``` block. 
+The code MUST end with:
+import json
+print(json.dumps(result, separators=(',',':')))
 </Final Output>
 """
     if html_context or (archive_context and archive_context[0]["content"].get("html")):
@@ -440,6 +442,15 @@ async def analyze(request: Request):
             sql_parquet_json_context=sql_parquet_json_context
         )
         print("Master Data Analyst Code:", orchestrator)
+        raw = orchestrator.strip()
+        # Fast path: if the model returned JSON, use it directly.
+        # (handles both pure JSON and cases like "Master Data Analyst Code: {...}")
+        m = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', raw)
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except Exception:
+                pass  # fall through to code path
         # Clean and execute the code
         cleaned = clean_code(orchestrator)
         cleaned = re.sub(
