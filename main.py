@@ -50,7 +50,7 @@ anthropic_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 class AnalysisRequest(BaseModel):
     question: str
 
-# === Helper: Call Anthropic to generate Python ===
+# === Master Orchestrator: Call Anthropic to generate Python ===
 async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv_tsv_xlsx_context=None, image_context=None, archive_context=None, sql_parquet_json_context=None) -> str:
     #data_source = preview.get("source", "")
     system_prompt = fr"""You are a skilled **Master Data Analyst** who writes complete, safe, and clean Python code to solve the user's data analysis task.
@@ -82,10 +82,9 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Encode using `base64.b64encode(buf.read()).decode('utf-8')`.
         - Format the plot/image based on the task (for example base64 or uri).
 </Plotting Instructions>
-
-The final output must be a single line:
-```python
-print(json.dumps([...])))
+<Final Output>
+Return the final answer as valid JSON (array or object) **exactly** in the structure requested in the task description. If the task requires Python code, return only the Python code block (no markdown or other text).
+</Final Output>
 """
     if html_context or (archive_context and archive_context[0]["content"].get("html")):
         html_text = ""
@@ -437,8 +436,15 @@ async def analyze(request: Request):
         cleaned = clean_code(orchestrator)
         stdout, stderr = execute_code(cleaned)
 
-        last_line = stdout.strip().splitlines()[-1]
-        data_analyst_ans = json.loads(last_line)
+        try:
+            last_line = stdout.strip().splitlines()[-1]
+            data_analyst_ans = json.loads(last_line)
+        except Exception as e:
+            print("Error parsing Master Data Analyst Output:", e)
+            if "{" in question_text or ":" in question_text:
+                data_analyst_ans = {}
+            else:
+                data_analyst_ans = []
 
         return data_analyst_ans
 
