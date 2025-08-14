@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import json
 # === Code cleaning ===
 def clean_code(code: str) -> str:
     """
@@ -24,7 +25,7 @@ def clean_url(u: str) -> str:
 
     return u
 
-import json
+
 
 def ensure_str(data):
     if isinstance(data, (dict, list)):

@@ -64,7 +64,7 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
     Always use the context sent by them to finally answer the task in the format requested.
 <General Instructions>
         - **Always** add all necessary import statements at the top of your code.
-        - **Only if** the specialised agents cannot answer or do not give you anything useful, then read the complete data yourself and answer the questions.
+        - **Only if** the specialised agents **do not give any answer**, then try to answer it yourself.
         - Before using `json.dumps(...)`, ensure all numeric values (like sums, means, etc.) are explicitly cast to native Python types using `int(...)` or `float(...)`. This avoids TypeError from numpy/pandas types.
         - When cleaning monetary values, use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
         - Always use pd.to_numeric(..., errors='coerce') for numeric conversion. Never use .astype(float) on user data — this will cause crashes on malformed entries.
@@ -123,10 +123,16 @@ Return the final answer as valid JSON (array or object) **exactly** in the struc
             csv_text += f"\nFrom Direct CSV/Excel Source: {csv_tsv_xlsx_context[0]['source']}\n{csv_tsv_xlsx_context[0]['content']}\n"
         if archive_context and archive_context[0]["content"].get("csv"):
             csv_text += f"\nFrom Archive CSV/Excel:\n{archive_context[0]['content']['csv']}\n"
-        system_prompt += f"""<CSV-TSV-EXCEL Instructions>
-    Here is the relevant content for the task from the `csv-tsv-xlsx Specialist Agent` which has already been extracted and structured for you.
-    You do **not** need to re-fetch or parse the csv/tsv/excel yourself.
-    Focus on using the provided structure and then answer the questions in the format requested.
+        system_prompt += f"""
+    <Data Access Contract>
+        - Treat the CSV-TSV-Excel agents content as the authoritative source. **Do NOT attempt to open local files by guessing filenames**.
+        - If the CSV-TSV-Excel agent provides narrative/prose with named metrics, USE those values directly.
+        - Never call pd.read_csv(...) with a bare or invented path.
+        - If required data cannot be found in the agents content, raise ValueError with a clear message instead of reading files.
+    </Data Access Contract>
+    <CSV-TSV-EXCEL Instructions>
+        Here is the relevant content for the task from the `csv-tsv-xlsx Specialist Agent` which has already been extracted and structured for you.
+        You do **not** need to re-fetch or parse the csv/tsv/excel yourself.
     </CSV-TSV-EXCEL Instructions>
     <CSV-TSV-EXCEL Data>
         {csv_text}
@@ -435,9 +441,10 @@ async def analyze(request: Request):
         # Clean and execute the code
         cleaned = clean_code(orchestrator)
         stdout, stderr = execute_code(cleaned)
-
+        print("STDERR from executed code:\n", stderr)
         try:
-            last_line = stdout.strip().splitlines()[-1]
+            lines = stdout.strip().splitlines()
+            last_line = lines[-1] if lines else ""
             data_analyst_ans = json.loads(last_line)
         except Exception as e:
             print("Error parsing Master Data Analyst Output:", e)
