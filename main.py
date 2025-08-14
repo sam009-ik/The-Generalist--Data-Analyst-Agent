@@ -63,17 +63,17 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
      - SQL/Parquet/JSON Agent
     Always use the context sent by them to finally answer the task in the format requested.
 <General Instructions>
-        - **Always** add all necessary import statements at the top of your code.
-        - **Only if** the specialised agents **do not give any answer**, then try to answer it yourself.
-        - Before using `json.dumps(...)`, ensure all numeric values (like sums, means, etc.) are explicitly cast to native Python types using `int(...)` or `float(...)`. This avoids TypeError from numpy/pandas types.
-        - When cleaning monetary values, use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
-        - Always use pd.to_numeric(..., errors='coerce') for numeric conversion. Never use .astype(float) on user data — this will cause crashes on malformed entries.
-        - In case the question text involves a date, ensure you take that into consideration and answer accordingly.
-        - Drop missing values using `df.dropna(subset=[...])` before running any model fitting or mathematical operations.
-        - Always validate that both X and y (for modelling) are numeric and contain no NaNs before calling `.fit()`.
-        - Use raw strings for regex (e.g., `r'\\$|,'`) to avoid escape errors.
-        - Import **all required packages** at the top of the script, including `json`, `io`, `base64`, `matplotlib.pyplot as plt`, etc.
-        - Do not try to read files that you do not have direct access to.
+    - **Always** add all necessary import statements at the top of your code.
+    - **Only if** the specialised agents **do not give any answer**, then try to answer it yourself.
+    - Before using `json.dumps(...)`, ensure all numeric values (like sums, means, etc.) are explicitly cast to native Python types using `int(...)` or `float(...)`. This avoids TypeError from numpy/pandas types.
+    - When cleaning monetary values, use .replace(r'[^\d.]', '', regex=True) to strip out all non-numeric characters except the decimal point
+    - Always use pd.to_numeric(..., errors='coerce') for numeric conversion. Never use .astype(float) on user data — this will cause crashes on malformed entries.
+    - In case the question text involves a date, ensure you take that into consideration and answer accordingly.
+    - Drop missing values using `df.dropna(subset=[...])` before running any model fitting or mathematical operations.
+    - Always validate that both X and y (for modelling) are numeric and contain no NaNs before calling `.fit()`.
+    - Use raw strings for regex (e.g., `r'\\$|,'`) to avoid escape errors.
+    - Import **all required packages** at the top of the script, including `json`, `io`, `base64`, `matplotlib.pyplot as plt`, etc.
+    - Do not try to read files that you do not have direct access to.
 </General Instructions>
 <Plotting Instructions>
     If the task involves plotting (e.g., scatterplot, regression line, barplot):
@@ -83,7 +83,9 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Format the plot/image based on the task (for example base64 or uri).
 </Plotting Instructions>
 <Final Output>
-Return the final answer as valid JSON (array or object) **exactly** in the structure requested in the task description. If the task requires Python code, return only the Python code block (no markdown or other text).
+Return the final answer as valid JSON (array or object) **exactly** in the structure requested in the task description. Print nothing else.
+The final output must be a single line:
+json.dumps(result, separators=(',',':')).
 </Final Output>
 """
     if html_context or (archive_context and archive_context[0]["content"].get("html")):
@@ -440,18 +442,46 @@ async def analyze(request: Request):
         print("Master Data Analyst Code:", orchestrator)
         # Clean and execute the code
         cleaned = clean_code(orchestrator)
+        cleaned = re.sub(
+            r'json\.dumps\((.+?)\s*,\s*indent\s*=\s*\d+\s*\)',
+            r"json.dumps(\1, separators=(',',':'))",
+            cleaned,
+            flags=re.S
+        )
         stdout, stderr = execute_code(cleaned)
         print("STDERR from executed code:\n", stderr)
-        try:
-            lines = stdout.strip().splitlines()
-            last_line = lines[-1] if lines else ""
-            data_analyst_ans = json.loads(last_line)
-        except Exception as e:
-            print("Error parsing Master Data Analyst Output:", e)
-            if "{" in question_text or ":" in question_text:
-                data_analyst_ans = {}
-            else:
-                data_analyst_ans = []
+        out = (stdout or "").strip()
+        data_analyst_ans = None
+
+        # 1) Try full stdout (works if it's exactly JSON, pretty or compact)
+        if out:
+            try:
+                data_analyst_ans = json.loads(out)
+            except Exception:
+                pass
+
+        # 2) Try to grab the last JSON object/array from stdout
+        if data_analyst_ans is None:
+            m = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])\s*$', out)
+            if m:
+                try:
+                    data_analyst_ans = json.loads(m.group(1))
+                except Exception:
+                    pass
+
+        # 3) Last-line attempt (your old logic)
+        if data_analyst_ans is None:
+            lines = [ln for ln in out.splitlines() if ln.strip()]
+            if lines:
+                try:
+                    data_analyst_ans = json.loads(lines[-1])
+                except Exception:
+                    pass
+
+        # 4) Fallback (keep your simple heuristic)
+        if data_analyst_ans is None:
+            print("Error parsing Master Data Analyst Output. Using fallback.")
+            data_analyst_ans = {} if ("{" in question_text or ":" in question_text) else []
 
         return data_analyst_ans
 
