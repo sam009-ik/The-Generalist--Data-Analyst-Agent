@@ -81,6 +81,10 @@ async def data_analyst_agent(task: str, html_context=None, pdf_context=None, csv
         - Save with `plt.savefig(buf, format='png')`, followed by `buf.seek(0)`.
         - Encode using `base64.b64encode(buf.read()).decode('utf-8')`.
         - Format the plot/image based on the task (for example base64 or uri).
+        - Before any plot, ensure x and y have the same length. If required data to construct a series is missing, either:
+           - create a simple monotonic series consistent with the known endpoints (e.g., np.linspace(start, end, n)), or
+           - skip the plot and set that JSON field to an empty string "".
+            Never raise.
 </Plotting Instructions>
 <Final Output>
 Return the result as valid JSON (array or object) **exactly** in the structure requested in the task description.
