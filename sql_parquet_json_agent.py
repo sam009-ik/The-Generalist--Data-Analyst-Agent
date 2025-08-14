@@ -20,13 +20,16 @@ async def sql_parquet_json_agent(task_description: str, engine: str, session_db_
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
+    tables_list = sample_preview.get("tables", sample_preview) if isinstance(sample_preview, dict) else sample_preview
+    allowed_tables = [t["name"] for t in tables_list]
 
     system_prompt = f"""
 You are a agent that deals with SQL-PARQUET-JSON files and writes ONLY Python code (no prose, no backticks).
 Context:
 - ENGINE: {engine}
 - SESSION_DB_PATH: {session_db_path}
-- SAMPLE_PREVIEW_TABLES: {sample_preview}
+- ALLOWED_TABLES: {allowed_tables}\n"
+- SAMPLE_PREVIEW_DATA: {sample_preview}
 
 Rules:
 - Output a complete, executable Python script ONLY.
@@ -34,6 +37,8 @@ Rules:
   import duckdb, pandas as pd, numpy as np
 - Connect with:
   con = duckdb.connect(SESSION_DB_PATH, read_only=True)
+- USE ONLY the registered tables listed in ALLOWED_TABLES.
+- NEVER read external files (no '...parquet' paths, no read_parquet, no FROM 'path').
 - Identifiers may include dots/spaces; always double-quote them in SQL, or create a cleaned view with underscore names first
 - Explore safely: start with small LIMITs; use df = con.execute(SQL).df()
 - Do NOT use the network or read/write local files. Work in-memory only.

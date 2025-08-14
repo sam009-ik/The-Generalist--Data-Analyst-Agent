@@ -509,32 +509,3 @@ async def process_sql_parquet_json(
 
     finally:
         builder.close()
-
-
-async def main():
-    # point to your downloaded SQL file
-    path = "duckdb-demo.duckdb"   # <-- change if needed
-
-    # wrap as UploadFile (FastAPI re-exports the same class)
-    f = open(path, "rb")
-    upload_sql = UploadFile(filename=path, file=f)
-
-    try:
-        out = await process_sql_parquet_json(
-            task="",
-            db_files=[upload_sql],
-            sql_files=[],
-            parquet_json_files=[],
-            db_urls=[],
-            sql_urls=[],
-            parquet_json_urls=[],
-            external_uris=[],
-            persist_dir="./_session_sql",
-            return_format="json"
-        )
-        print(out)  # should be a dict with session info
-    finally:
-        await upload_sql.close()  # closes underlying file too
-
-if __name__ == "__main__":
-    asyncio.run(main())
